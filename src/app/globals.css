@@ -1,8 +1,17 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #080806;
+  --foreground: #f6eed8;
+  --vault-panel: rgba(22, 21, 18, 0.86);
+  --vault-panel-strong: rgba(31, 29, 24, 0.94);
+  --vault-border: rgba(234, 179, 8, 0.18);
+  --vault-border-strong: rgba(234, 179, 8, 0.34);
+  --vault-gold: #eab308;
+  --vault-gold-soft: #facc15;
+  --vault-cream: #f6eed8;
+  --vault-muted: #a8a29e;
+  --vault-ink: #080806;
 }
 
 @theme inline {
@@ -12,15 +21,129 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-image:
+    radial-gradient(circle at 18% 0%, rgba(234, 179, 8, 0.06), transparent 26rem),
+    radial-gradient(circle at 86% 12%, rgba(99, 102, 241, 0.035), transparent 24rem),
+    linear-gradient(180deg, #050505 0%, #090907 46%, #050505 100%);
+  background-attachment: fixed;
+}
+
+::selection {
+  background: rgba(234, 179, 8, 0.35);
+  color: var(--vault-cream);
+}
+
+.bg-white,
+.bg-stone-50,
+.bg-stone-100 {
+  background-color: var(--vault-panel);
+}
+
+.bg-stone-950,
+.bg-emerald-700 {
+  background-color: var(--vault-gold);
+  color: var(--vault-ink);
+}
+
+.hover\:bg-stone-800:hover,
+.hover\:bg-emerald-800:hover {
+  background-color: var(--vault-gold-soft);
+  color: var(--vault-ink);
+}
+
+.border-stone-200,
+.border-stone-300,
+.border-dashed {
+  border-color: var(--vault-border);
+}
+
+.text-stone-950,
+.text-stone-900,
+.text-stone-800 {
+  color: var(--vault-cream);
+}
+
+.text-stone-700,
+.text-stone-600,
+.text-stone-500 {
+  color: var(--vault-muted);
+}
+
+.text-emerald-700,
+.text-emerald-800,
+.text-emerald-900 {
+  color: var(--vault-gold);
+}
+
+.bg-emerald-50,
+.bg-emerald-100,
+.bg-amber-50,
+.bg-amber-100 {
+  background-color: rgba(234, 179, 8, 0.12);
+}
+
+.text-emerald-700,
+.text-emerald-800,
+.text-amber-900 {
+  color: var(--vault-gold-soft);
+}
+
+input,
+select,
+textarea {
+  background-color: rgba(8, 8, 6, 0.74);
+  border-color: var(--vault-border);
+  color: var(--vault-cream);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: rgba(168, 162, 158, 0.78);
+}
+
+option {
+  background-color: #11100d;
+  color: var(--vault-cream);
+}
+
+.vault-panel {
+  background: linear-gradient(180deg, rgba(29, 27, 23, 0.95), rgba(15, 14, 12, 0.95));
+  border: 1px solid var(--vault-border);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+}
+
+.vault-button {
+  background: linear-gradient(180deg, var(--vault-gold-soft), var(--vault-gold));
+  color: var(--vault-ink);
+  border: 1px solid rgba(250, 204, 21, 0.52);
+}
+
+.vault-button:hover {
+  background: #fde047;
+}
+
+.vault-button-secondary {
+  background: rgba(246, 238, 216, 0.04);
+  color: var(--vault-cream);
+  border: 1px solid var(--vault-border);
+}
+
+.vault-button-secondary:hover {
+  border-color: var(--vault-border-strong);
+  background: rgba(234, 179, 8, 0.08);
+}
+
+.vault-badge {
+  border: 1px solid var(--vault-border);
+  background: rgba(246, 238, 216, 0.06);
+  color: var(--vault-cream);
+}
+
+.vault-badge-gold {
+  border: 1px solid rgba(250, 204, 21, 0.5);
+  background: rgba(234, 179, 8, 0.16);
+  color: var(--vault-gold-soft);
 }
