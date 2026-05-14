@@ -19,7 +19,7 @@ export default async function Home() {
       <main>
         <section className="relative overflow-hidden bg-white">
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/50 to-transparent" />
-          <div className="mx-auto flex max-w-6xl justify-center px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
+          <div className="mx-auto flex max-w-[88rem] justify-center px-4 py-14 sm:px-6 sm:py-20 lg:px-8 xl:py-24">
             <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
               <div className="mb-8 flex flex-col items-center text-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -55,16 +55,13 @@ export default async function Home() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
+        <section className="mx-auto max-w-[88rem] px-4 py-10 sm:px-6 lg:px-8 xl:py-12">
           <div>
             <h2 className="text-2xl font-bold text-stone-950">
               Browse by category
             </h2>
-            <p className="mt-2 text-sm text-stone-600">
-              Stock is small and added manually as cards become available.
-            </p>
           </div>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {homepageCategories.map((category) => (
               <Link
                 key={category.value}
@@ -82,15 +79,11 @@ export default async function Home() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-6xl px-4 pb-12 sm:px-6 lg:px-8">
+        <section className="mx-auto max-w-[88rem] px-4 pb-14 sm:px-6 lg:px-8">
           <div>
             <h2 className="text-2xl font-bold text-stone-950">
               Latest listings
             </h2>
-            <p className="mt-2 text-sm text-stone-600">
-              No placeholder stock is shown here. Only cards added through admin
-              appear in the shop.
-            </p>
           </div>
           <ProductGrid initialProducts={products} featuredOnly />
         </section>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { SiteFooter } from "@/components/SiteFooter";
+import { WhatsAppFloatingButton } from "@/components/WhatsAppFloatingButton";
 import { shopConfig } from "@/config/shop";
 import "./globals.css";
 
@@ -33,6 +34,7 @@ export default function RootLayout({
       <body className="min-h-full bg-stone-50 pb-16 text-stone-950 sm:pb-0">
         {children}
         <SiteFooter />
+        <WhatsAppFloatingButton />
         <MobileBottomNav />
       </body>
     </html>

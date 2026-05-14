@@ -3,7 +3,7 @@ export const shopConfig = {
   logoPath: "/images/collectiq.png",
   websiteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
   supportEmail: "",
-  whatsappSupportNumber: "",
+  whatsappSupportNumber: "27729693656",
   currency: "ZAR",
   sellerLocation: "South Africa",
   sellerNotificationPreference: "whatsapp-or-email-after-payment",
