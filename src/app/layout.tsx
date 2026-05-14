@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { SiteFooter } from "@/components/SiteFooter";
 import { WhatsAppFloatingButton } from "@/components/WhatsAppFloatingButton";
@@ -36,6 +37,7 @@ export default function RootLayout({
         <SiteFooter />
         <WhatsAppFloatingButton />
         <MobileBottomNav />
+        <Analytics />
       </body>
     </html>
   );
