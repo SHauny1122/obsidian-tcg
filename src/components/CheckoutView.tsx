@@ -57,7 +57,7 @@ export function CheckoutView({
 
       const localCartItems = getCartItems();
 
-      setCartItems(localCartItems.length > 0 ? localCartItems : initialCartItems);
+      setCartItems(localCartItems);
     };
     let isMounted = true;
 

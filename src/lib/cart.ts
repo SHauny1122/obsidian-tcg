@@ -75,8 +75,11 @@ export function saveCartItems(cartItems: CartItem[]) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ cartItems }),
-  }).catch(() => undefined);
-  window.dispatchEvent(new Event("cart-updated"));
+  })
+    .catch(() => undefined)
+    .finally(() => {
+      window.dispatchEvent(new Event("cart-updated"));
+    });
 }
 
 export function getCartCount(cartItems: CartItem[]) {

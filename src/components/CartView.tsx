@@ -27,7 +27,6 @@ export function CartView({
         if (response.ok && Array.isArray(data.cartItems)) {
           if (data.cartItems.length > 0) {
             setCartItems(data.cartItems);
-            saveCartItems(data.cartItems);
             return;
           }
         }
@@ -42,7 +41,7 @@ export function CartView({
         return;
       }
 
-      setCartItems(initialCartItems);
+      setCartItems([]);
     };
 
     void loadCart();
