@@ -1,24 +1,32 @@
 "use client";
 
-import { FormEvent, ReactNode, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useState } from "react";
 import { shopConfig } from "@/config/shop";
 
 const adminSessionKey = "pokemon-market-admin-unlocked";
+const adminSessionPasswordKey = "pokemon-market-admin-password";
 
 export function AdminGate({ children }: { children: ReactNode }) {
   const [password, setPassword] = useState("");
-  const [isUnlocked, setIsUnlocked] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      window.sessionStorage.getItem(adminSessionKey) === "true",
-  );
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [hasCheckedSession, setHasCheckedSession] = useState(false);
   const [isDenied, setIsDenied] = useState(false);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setIsUnlocked(window.sessionStorage.getItem(adminSessionKey) === "true");
+      setHasCheckedSession(true);
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, []);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (password === shopConfig.temporaryAdminPassword) {
       window.sessionStorage.setItem(adminSessionKey, "true");
+      window.sessionStorage.setItem(adminSessionPasswordKey, password);
       setIsUnlocked(true);
       setIsDenied(false);
       setPassword("");
@@ -27,6 +35,19 @@ export function AdminGate({ children }: { children: ReactNode }) {
 
     setIsDenied(true);
     setPassword("");
+  }
+
+  if (!hasCheckedSession) {
+    return (
+      <section className="vault-panel mx-auto max-w-xl rounded-lg p-6 text-center sm:p-8">
+        <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-700">
+          Admin vault
+        </p>
+        <h1 className="mt-3 text-3xl font-bold text-stone-950">
+          Checking access
+        </h1>
+      </section>
+    );
   }
 
   if (isUnlocked) {

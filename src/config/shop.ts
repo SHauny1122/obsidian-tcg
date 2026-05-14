@@ -1,5 +1,8 @@
 export const shopConfig = {
-  name: "Obsidian TCG",
+  name: "CollectIQ",
+  logoPath: "/images/collectiq.png",
+  websiteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+  supportEmail: "",
   whatsappSupportNumber: "",
   currency: "ZAR",
   sellerLocation: "South Africa",

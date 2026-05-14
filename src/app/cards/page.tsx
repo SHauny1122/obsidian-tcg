@@ -1,6 +1,7 @@
 import { ProductGrid } from "@/components/ProductGrid";
 import { SiteHeader } from "@/components/SiteHeader";
-import { products, type ProductCategory } from "@/data/products";
+import { type ProductCategory } from "@/data/products";
+import { listProducts } from "@/lib/products-repository";
 
 const allowedCategories: ProductCategory[] = [
   "singles",
@@ -9,14 +10,19 @@ const allowedCategories: ProductCategory[] = [
   "accessories",
 ];
 
+export const dynamic = "force-dynamic";
+
 export default async function CardsPage(props: PageProps<"/cards">) {
   const searchParams = await props.searchParams;
+  const products = await listProducts();
   const categoryParam = searchParams.category;
+  const setParam = searchParams.set;
   const initialCategory =
     typeof categoryParam === "string" &&
     allowedCategories.includes(categoryParam as ProductCategory)
       ? (categoryParam as ProductCategory)
-      : "all";
+      : "singles";
+  const initialSet = typeof setParam === "string" ? setParam : undefined;
 
   return (
     <div className="min-h-screen">
@@ -36,9 +42,10 @@ export default async function CardsPage(props: PageProps<"/cards">) {
         </div>
 
         <ProductGrid
-          key={initialCategory}
-          mockProducts={products}
+          key={`${initialCategory}-${initialSet ?? "all-sets"}`}
+          initialProducts={products}
           initialCategory={initialCategory}
+          initialSet={initialSet}
         />
       </main>
     </div>

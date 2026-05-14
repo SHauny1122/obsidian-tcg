@@ -100,7 +100,7 @@ export function PaymentCallbackView({ reference }: { reference?: string }) {
       ) : null}
       <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
         <Link
-          href="/cards"
+          href="/cards?category=singles"
           className="vault-button inline-flex min-h-12 items-center justify-center rounded-md px-5 py-3 text-sm font-semibold shadow-sm"
         >
           Browse cards

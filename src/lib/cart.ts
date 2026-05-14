@@ -17,21 +17,65 @@ export function getCartItems(): CartItem[] {
     return [];
   }
 
-  try {
-    const storedCart = window.localStorage.getItem(cartStorageKey);
+  const readStoredCart = (storedCart: string | null) => {
     if (!storedCart) {
       return [];
     }
 
     const cartItems = JSON.parse(storedCart);
     return Array.isArray(cartItems) ? cartItems : [];
+  };
+
+  try {
+    const storedCart = window.localStorage.getItem(cartStorageKey);
+    const cartItems = readStoredCart(storedCart);
+
+    if (cartItems.length > 0) {
+      return cartItems;
+    }
+  } catch {
+    // Fall back to session storage below.
+  }
+
+  try {
+    return readStoredCart(window.sessionStorage.getItem(cartStorageKey));
   } catch {
     return [];
   }
 }
 
+function persistCartItems(cartItems: CartItem[]) {
+  const serializedCart = JSON.stringify(cartItems);
+  let didSave = false;
+
+  try {
+    window.localStorage.setItem(cartStorageKey, serializedCart);
+    didSave = true;
+  } catch {
+    // Some mobile/private browsers can reject localStorage writes.
+  }
+
+  try {
+    window.sessionStorage.setItem(cartStorageKey, serializedCart);
+    didSave = true;
+  } catch {
+    // If both browser stores fail, the caller should show a real error.
+  }
+
+  if (!didSave) {
+    throw new Error("Could not update cart storage.");
+  }
+}
+
 export function saveCartItems(cartItems: CartItem[]) {
-  window.localStorage.setItem(cartStorageKey, JSON.stringify(cartItems));
+  persistCartItems(cartItems);
+  void fetch("/api/cart", {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ cartItems }),
+  }).catch(() => undefined);
   window.dispatchEvent(new Event("cart-updated"));
 }
 
@@ -82,6 +126,16 @@ export function addProductToCart(product: Product, quantity = 1) {
       ];
 
   saveCartItems(nextItems);
+
+  const savedItem = getCartItems().find((item) => item.slug === product.slug);
+
+  if (!savedItem || savedItem.quantity !== nextQuantity) {
+    return {
+      ok: false,
+      message:
+        "This browser did not save the cart item. Please refresh and try again.",
+    };
+  }
 
   return {
     ok: true,

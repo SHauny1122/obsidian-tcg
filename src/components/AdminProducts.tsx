@@ -1,16 +1,13 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { formatZar } from "@/components/ProductCard";
 import type { Product } from "@/data/products";
-import { productCategories } from "@/data/products";
+import { productCategories, productFinishes } from "@/data/products";
 import {
-  buildLocalProduct,
-  getLocalProducts,
   getProductImage,
   ProductFormValues,
   productToFormValues,
-  saveLocalProducts,
 } from "@/lib/local-products";
 
 const initialFormValues: ProductFormValues = {
@@ -18,34 +15,94 @@ const initialFormValues: ProductFormValues = {
   setName: "",
   cardNumber: "",
   category: "singles",
+  finish: "normal",
   condition: "Near mint",
   quantity: "1",
   askingPriceZar: "",
   status: "available",
   image: "",
-  uploadedImage: "",
+  imagePath: "",
   description: "",
 };
 
-export function AdminProducts({ mockProducts }: { mockProducts: Product[] }) {
+const adminSessionPasswordKey = "pokemon-market-admin-password";
+const newSetValue = "__new_set__";
+
+function adminPassword() {
+  return (
+    window.sessionStorage.getItem(adminSessionPasswordKey) ??
+    process.env.NEXT_PUBLIC_ADMIN_PASSWORD ??
+    "vault-dev"
+  );
+}
+
+async function compressImageForUpload(file: File) {
+  if (!file.type.startsWith("image/")) {
+    return file;
+  }
+
+  const image = new Image();
+  const objectUrl = URL.createObjectURL(file);
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error("Could not read image."));
+      image.src = objectUrl;
+    });
+
+    const maxDimension = 1400;
+    const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
+    const width = Math.max(1, Math.round(image.width * scale));
+    const height = Math.max(1, Math.round(image.height * scale));
+    const canvas = document.createElement("canvas");
+
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext("2d")?.drawImage(image, 0, 0, width, height);
+
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", 0.82),
+    );
+
+    if (!blob) {
+      return file;
+    }
+
+    return new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), {
+      type: "image/jpeg",
+    });
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+export function AdminProducts({ initialProducts }: { initialProducts: Product[] }) {
   const [formValues, setFormValues] =
     useState<ProductFormValues>(initialFormValues);
-  const [localProducts, setLocalProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Product[]>(initialProducts);
   const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
-    const loadProducts = () => setLocalProducts(getLocalProducts());
-
-    loadProducts();
-    window.addEventListener("storage", loadProducts);
-    window.addEventListener("local-products-updated", loadProducts);
-
-    return () => {
-      window.removeEventListener("storage", loadProducts);
-      window.removeEventListener("local-products-updated", loadProducts);
-    };
+    void loadProducts();
   }, []);
+
+  async function loadProducts() {
+    const response = await fetch("/api/admin/products", {
+      headers: { "x-admin-password": adminPassword() },
+    });
+    const data = await response.json();
+
+    if (response.ok && Array.isArray(data.products)) {
+      setProducts(data.products);
+    } else if (data.error) {
+      setErrorMessage(data.error);
+    }
+  }
 
   function updateField(field: keyof ProductFormValues, value: string) {
     setFormValues((currentValues) => ({
@@ -59,67 +116,167 @@ export function AdminProducts({ mockProducts }: { mockProducts: Product[] }) {
     setEditingProductId(null);
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    const existingProducts = [...localProducts, ...mockProducts];
-    const product = buildLocalProduct(
-      formValues,
-      existingProducts,
-      editingProductId ?? undefined,
-    );
-    const updatedProducts = editingProductId
-      ? localProducts.map((localProduct) =>
-          localProduct.id === editingProductId ? product : localProduct,
-        )
-      : [product, ...localProducts];
-
-    saveLocalProducts(updatedProducts);
-    setLocalProducts(updatedProducts);
-    resetForm();
-    setSuccessMessage(
-      editingProductId
-        ? `${product.name} was updated.`
-        : `${product.name} was added to local browser storage.`,
-    );
+  function productPayload() {
+    return {
+      name: formValues.name,
+      setName: formValues.setName,
+      cardNumber: formValues.cardNumber,
+      category: formValues.category,
+      finish: formValues.finish,
+      condition: formValues.condition,
+      quantity: Number(formValues.quantity),
+      askingPriceZar: Number(formValues.askingPriceZar),
+      status: formValues.status,
+      imageUrl: formValues.image,
+      imagePath: formValues.imagePath,
+      description: formValues.description,
+    };
   }
 
-  function handleDelete(productId: string) {
-    const updatedProducts = localProducts.filter(
-      (product) => product.id !== productId,
-    );
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsSaving(true);
+    setSuccessMessage("");
+    setErrorMessage("");
 
-    saveLocalProducts(updatedProducts);
-    setLocalProducts(updatedProducts);
-    if (editingProductId === productId) {
+    try {
+      const response = await fetch(
+        editingProductId
+          ? `/api/admin/products/${editingProductId}`
+          : "/api/admin/products",
+        {
+          method: editingProductId ? "PUT" : "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-admin-password": adminPassword(),
+          },
+          body: JSON.stringify(productPayload()),
+        },
+      );
+      const data = await response.json();
+
+      if (!response.ok || !data.product) {
+        throw new Error(data.error ?? "Could not save product.");
+      }
+
+      await loadProducts();
+      window.dispatchEvent(new Event("products-updated"));
       resetForm();
+      setSuccessMessage(
+        editingProductId
+          ? `${data.product.name} was updated.`
+          : `${data.product.name} was added to the shared store.`,
+      );
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Could not save product.",
+      );
+    } finally {
+      setIsSaving(false);
     }
-    setSuccessMessage("Local product deleted.");
+  }
+
+  async function handleDelete(productId: string) {
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    try {
+      const response = await fetch(`/api/admin/products/${productId}`, {
+        method: "DELETE",
+        headers: { "x-admin-password": adminPassword() },
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Could not delete product.");
+      }
+
+      setProducts((currentProducts) =>
+        currentProducts.filter((product) => product.id !== productId),
+      );
+      window.dispatchEvent(new Event("products-updated"));
+      if (editingProductId === productId) {
+        resetForm();
+      }
+      setSuccessMessage("Product deleted from the shared store.");
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Could not delete product.",
+      );
+    }
   }
 
   function handleEdit(product: Product) {
     setFormValues(productToFormValues(product));
     setEditingProductId(product.id);
     setSuccessMessage("");
+    setErrorMessage("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function handleImageUpload(file: File | undefined) {
+  async function handleImageUpload(file: File | undefined) {
     if (!file) {
       return;
     }
 
-    const reader = new FileReader();
-    reader.addEventListener("load", () => {
-      if (typeof reader.result === "string") {
-        updateField("uploadedImage", reader.result);
+    setIsUploading(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    try {
+      const optimizedFile = await compressImageForUpload(file);
+      const formData = new FormData();
+
+      formData.append("file", optimizedFile);
+
+      const response = await fetch("/api/admin/uploads", {
+        method: "POST",
+        headers: { "x-admin-password": adminPassword() },
+        body: formData,
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data.publicUrl) {
+        throw new Error(data.error ?? "Could not upload image.");
       }
-    });
-    reader.readAsDataURL(file);
+
+      updateField("image", data.publicUrl);
+      updateField("imagePath", data.path ?? "");
+      setSuccessMessage("Image uploaded to Supabase Storage.");
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Could not upload image.",
+      );
+    } finally {
+      setIsUploading(false);
+    }
   }
 
-  const imagePreview = formValues.uploadedImage || formValues.image;
+  const imagePreview = formValues.image;
   const isEditing = editingProductId !== null;
+  const availableSetNames = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          products
+            .map((product) => product.setName.trim())
+            .filter((setName) => setName.length > 0),
+        ),
+      ).sort((firstSet, secondSet) => firstSet.localeCompare(secondSet)),
+    [products],
+  );
+  const selectedSetOption = availableSetNames.includes(formValues.setName)
+    ? formValues.setName
+    : newSetValue;
+
+  function handleSetOptionChange(value: string) {
+    if (value === newSetValue) {
+      updateField("setName", "");
+      return;
+    }
+
+    updateField("setName", value);
+  }
 
   return (
     <div className="space-y-8">
@@ -132,14 +289,18 @@ export function AdminProducts({ mockProducts }: { mockProducts: Product[] }) {
             {isEditing ? "Edit card/product" : "Add card/product"}
           </h1>
           <p className="mt-3 text-sm leading-6 text-stone-600">
-            Products saved here live in this browser only. Prices are manual
-            seller asking prices.
+            Products saved here now go into the shared Supabase database.
           </p>
         </div>
 
         {successMessage ? (
           <div className="mt-5 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
             {successMessage}
+          </div>
+        ) : null}
+        {errorMessage ? (
+          <div className="mt-5 rounded-md border border-red-400/40 bg-red-950/30 px-4 py-3 text-sm text-red-200">
+            {errorMessage}
           </div>
         ) : null}
 
@@ -155,16 +316,34 @@ export function AdminProducts({ mockProducts }: { mockProducts: Product[] }) {
             />
           </label>
 
-          <label className="grid gap-1.5 text-sm font-medium text-stone-800">
-            Set name <span className="text-red-700">*</span>
-            <input
-              required
-              value={formValues.setName}
-              onChange={(event) => updateField("setName", event.target.value)}
-              placeholder="Scarlet & Violet, assorted modern sets, etc."
-              className="min-h-11 rounded-md border border-stone-300 px-3 py-2 text-base outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
-            />
-          </label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="grid gap-1.5 text-sm font-medium text-stone-800">
+              Existing set
+              <select
+                value={selectedSetOption}
+                onChange={(event) => handleSetOptionChange(event.target.value)}
+                className="min-h-11 rounded-md border border-stone-300 px-3 py-2 text-base outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
+              >
+                {availableSetNames.map((setName) => (
+                  <option key={setName} value={setName}>
+                    {setName}
+                  </option>
+                ))}
+                <option value={newSetValue}>Add a new set...</option>
+              </select>
+            </label>
+
+            <label className="grid gap-1.5 text-sm font-medium text-stone-800">
+              Set name <span className="text-red-700">*</span>
+              <input
+                required
+                value={formValues.setName}
+                onChange={(event) => updateField("setName", event.target.value)}
+                placeholder="Mega Evolution, Phantasmal Flames, etc."
+                className="min-h-11 rounded-md border border-stone-300 px-3 py-2 text-base outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
+              />
+            </label>
+          </div>
 
           <label className="grid gap-1.5 text-sm font-medium text-stone-800">
             Category <span className="text-red-700">*</span>
@@ -177,6 +356,22 @@ export function AdminProducts({ mockProducts }: { mockProducts: Product[] }) {
               {productCategories.map((category) => (
                 <option key={category.value} value={category.value}>
                   {category.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="grid gap-1.5 text-sm font-medium text-stone-800">
+            Finish <span className="text-red-700">*</span>
+            <select
+              required
+              value={formValues.finish}
+              onChange={(event) => updateField("finish", event.target.value)}
+              className="min-h-11 rounded-md border border-stone-300 px-3 py-2 text-base outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
+            >
+              {productFinishes.map((finish) => (
+                <option key={finish.value} value={finish.value}>
+                  {finish.label}
                 </option>
               ))}
             </select>
@@ -256,7 +451,10 @@ export function AdminProducts({ mockProducts }: { mockProducts: Product[] }) {
             <input
               type="url"
               value={formValues.image}
-              onChange={(event) => updateField("image", event.target.value)}
+              onChange={(event) => {
+                updateField("image", event.target.value);
+                updateField("imagePath", "");
+              }}
               placeholder="https://example.com/card-photo.jpg"
               className="min-h-11 rounded-md border border-stone-300 px-3 py-2 text-base outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
             />
@@ -267,6 +465,7 @@ export function AdminProducts({ mockProducts }: { mockProducts: Product[] }) {
             <input
               type="file"
               accept="image/*"
+              disabled={isUploading}
               onChange={(event) => handleImageUpload(event.target.files?.[0])}
               className="min-h-11 rounded-md border border-stone-300 px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-stone-950 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
             />
@@ -285,15 +484,16 @@ export function AdminProducts({ mockProducts }: { mockProducts: Product[] }) {
                   className="h-full w-full object-cover"
                 />
               </div>
-              {formValues.uploadedImage ? (
-                <button
-                  type="button"
-                  onClick={() => updateField("uploadedImage", "")}
-                  className="mt-3 text-sm font-semibold text-red-700 hover:text-red-800"
-                >
-                  Remove uploaded image
-                </button>
-              ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  updateField("image", "");
+                  updateField("imagePath", "");
+                }}
+                className="mt-3 text-sm font-semibold text-red-700 hover:text-red-800"
+              >
+                Remove image
+              </button>
             </div>
           ) : null}
 
@@ -314,9 +514,14 @@ export function AdminProducts({ mockProducts }: { mockProducts: Product[] }) {
           <div className="flex flex-col gap-3 sm:flex-row">
             <button
               type="submit"
-              className="vault-button min-h-12 rounded-md px-5 py-3 text-sm font-semibold shadow-sm sm:w-fit"
+              disabled={isSaving || isUploading}
+              className="vault-button min-h-12 rounded-md px-5 py-3 text-sm font-semibold shadow-sm disabled:cursor-not-allowed disabled:opacity-60 sm:w-fit"
             >
-              {isEditing ? "Update product" : "Add product"}
+              {isSaving
+                ? "Saving..."
+                : isEditing
+                  ? "Update product"
+                  : "Add product"}
             </button>
             {isEditing ? (
               <button
@@ -334,16 +539,16 @@ export function AdminProducts({ mockProducts }: { mockProducts: Product[] }) {
       <section className="vault-panel rounded-lg p-5 sm:p-6">
         <h2 className="text-2xl font-bold text-stone-950">Manage Products</h2>
         <p className="mt-2 text-sm text-stone-600">
-          These are the products added in this browser.
+          These are the products currently saved in Supabase.
         </p>
 
-        {localProducts.length === 0 ? (
+        {products.length === 0 ? (
           <div className="mt-5 rounded-lg border border-dashed border-stone-300 p-6 text-center text-sm text-stone-600">
-            No local products added yet.
+            No shared products added yet.
           </div>
         ) : (
           <div className="mt-5 space-y-3">
-            {localProducts.map((product) => (
+            {products.map((product) => (
               <article
                 key={product.id}
                 className="flex flex-col gap-4 rounded-lg border border-stone-200 bg-stone-50/50 p-4 sm:flex-row sm:items-center sm:justify-between"
@@ -358,15 +563,27 @@ export function AdminProducts({ mockProducts }: { mockProducts: Product[] }) {
                     />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-stone-950">
-                      {product.name}
-                    </h3>
-                    <p className="mt-1 text-sm text-stone-600">
-                      {product.setName} · {product.category} · {product.condition} ·{" "}
-                      {formatZar(product.askingPriceZar)}
-                    </p>
+                    {(() => {
+                      const finishLabel =
+                        productFinishes.find(
+                          (finish) => finish.value === product.finish,
+                        )?.label ?? "Normal";
+
+                      return (
+                        <>
+                          <h3 className="font-semibold text-stone-950">
+                            {product.name}
+                          </h3>
+                          <p className="mt-1 text-sm text-stone-600">
+                            {product.setName} · {product.category} ·{" "}
+                            {product.condition} · {finishLabel} ·{" "}
+                            {formatZar(product.askingPriceZar)}
+                          </p>
+                        </>
+                      );
+                    })()}
                     <p className="mt-1 text-xs font-semibold uppercase text-stone-500">
-                      {product.status}
+                      {product.status} · Qty {product.quantity}
                     </p>
                   </div>
                 </div>

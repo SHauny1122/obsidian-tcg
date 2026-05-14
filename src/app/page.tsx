@@ -1,26 +1,35 @@
 import Link from "next/link";
 import { ProductGrid } from "@/components/ProductGrid";
 import { SiteHeader } from "@/components/SiteHeader";
-import { productCategories, products } from "@/data/products";
+import { shopConfig } from "@/config/shop";
+import { productCategories } from "@/data/products";
+import { listProducts } from "@/lib/products-repository";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  const products = await listProducts();
+  const homepageCategories = productCategories.filter((category) =>
+    ["singles", "accessories"].includes(category.value),
+  );
+
   return (
     <div className="min-h-screen">
       <SiteHeader />
       <main>
         <section className="relative overflow-hidden bg-white">
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/50 to-transparent" />
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/50 to-transparent" />
           <div className="mx-auto flex max-w-6xl justify-center px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
             <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
               <div className="mb-8 flex flex-col items-center text-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src="/images/obsidian.png"
-                  alt="Obsidian TCG logo"
+                  src={shopConfig.logoPath}
+                  alt={`${shopConfig.name} logo`}
                   className="h-24 w-24 rounded-full object-contain shadow-[0_0_44px_rgba(234,179,8,0.22)] sm:h-28 sm:w-28"
                 />
                 <p className="mt-4 text-sm font-semibold uppercase tracking-[0.28em] text-emerald-700">
-                  OBSIDIAN TCG
+                  {shopConfig.name}
                 </p>
               </div>
               <h1 className="mt-4 text-center text-4xl font-bold tracking-tight text-stone-950 sm:text-6xl">
@@ -56,11 +65,11 @@ export default function Home() {
             </p>
           </div>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {productCategories.map((category) => (
+            {homepageCategories.map((category) => (
               <Link
                 key={category.value}
                 href={`/cards?category=${category.value}`}
-                className="vault-panel rounded-lg p-5 transition hover:border-amber-300/50 hover:shadow-md"
+                className="vault-panel rounded-lg p-5 transition hover:border-cyan-300/50 hover:shadow-md"
               >
                 <h3 className="text-lg font-bold text-stone-950">
                   {category.label}
@@ -83,7 +92,7 @@ export default function Home() {
               appear in the shop.
             </p>
           </div>
-          <ProductGrid mockProducts={products} featuredOnly />
+          <ProductGrid initialProducts={products} featuredOnly />
         </section>
       </main>
     </div>

@@ -1,9 +1,4 @@
-"use client";
-
-import Link from "next/link";
-import { useState } from "react";
 import type { Product } from "@/data/products";
-import { addProductToCart } from "@/lib/cart";
 
 export function AddToCartButton({
   product,
@@ -12,13 +7,7 @@ export function AddToCartButton({
   product: Product;
   className?: string;
 }) {
-  const [message, setMessage] = useState("");
   const isSold = product.status === "sold";
-
-  function handleAddToCart() {
-    const result = addProductToCart(product);
-    setMessage(result.message);
-  }
 
   if (isSold) {
     return (
@@ -35,22 +24,16 @@ export function AddToCartButton({
   }
 
   return (
-    <div className={className}>
+    <form action="/api/cart" method="post" className={className}>
+      <input type="hidden" name="slug" value={product.slug} />
+      <input type="hidden" name="quantity" value="1" />
+      <input type="hidden" name="redirectTo" value="/cart" />
       <button
-        type="button"
-        onClick={handleAddToCart}
+        type="submit"
         className="vault-button min-h-11 w-full rounded-md px-4 py-2 text-sm font-semibold shadow-sm"
       >
         Add to cart
       </button>
-      {message ? (
-        <p className="mt-2 rounded-md border border-stone-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
-          {message}{" "}
-          <Link href="/cart" className="underline underline-offset-2">
-            View cart
-          </Link>
-        </p>
-      ) : null}
-    </div>
+    </form>
   );
 }

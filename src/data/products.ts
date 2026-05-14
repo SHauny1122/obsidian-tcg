@@ -1,5 +1,24 @@
 export type ProductStatus = "available" | "sold";
 export type ProductCategory = "singles" | "bundles" | "bulk" | "accessories";
+export type ProductFinish = "normal" | "holofoil" | "reverse-holofoil";
+
+export const productFinishes: Array<{
+  value: ProductFinish;
+  label: string;
+}> = [
+  {
+    value: "normal",
+    label: "Normal",
+  },
+  {
+    value: "holofoil",
+    label: "Holofoil",
+  },
+  {
+    value: "reverse-holofoil",
+    label: "Reverse Holofoil",
+  },
+];
 
 export const productCategories: Array<{
   value: ProductCategory;
@@ -35,12 +54,14 @@ export type Product = {
   setName: string;
   cardNumber?: string;
   category: ProductCategory;
+  finish: ProductFinish;
   condition: string;
   quantity: number;
   askingPriceZar: number;
   status: ProductStatus;
   image: string;
   imageUrl?: string;
+  imagePath?: string;
   uploadedImage?: string;
   description: string;
 };

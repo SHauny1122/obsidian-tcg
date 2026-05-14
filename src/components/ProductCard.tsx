@@ -1,21 +1,17 @@
 import Link from "next/link";
 import { AddToCartButton } from "@/components/AddToCartButton";
-import { shopConfig } from "@/config/shop";
-import type { Product } from "@/data/products";
+import { productFinishes, type Product } from "@/data/products";
 import { getProductImage } from "@/lib/local-products";
 
-const currencyFormatter = new Intl.NumberFormat("en-ZA", {
-  style: "currency",
-  currency: shopConfig.currency,
-  maximumFractionDigits: 0,
-});
-
 export function formatZar(amount: number) {
-  return currencyFormatter.format(amount);
+  return `R ${amount.toFixed(2)}`;
 }
 
 export function ProductCard({ product }: { product: Product }) {
   const isSold = product.status === "sold";
+  const finishLabel =
+    productFinishes.find((finish) => finish.value === product.finish)?.label ??
+    "Normal";
 
   return (
     <article className="vault-panel overflow-hidden rounded-lg">
@@ -60,7 +56,10 @@ export function ProductCard({ product }: { product: Product }) {
         <dl className="grid grid-cols-2 gap-2 text-sm">
           <div>
             <dt className="text-stone-500">Condition</dt>
-            <dd className="font-medium text-stone-900">{product.condition}</dd>
+            <dd className="font-medium text-stone-900">
+              {product.condition}
+              <span className="block text-stone-500">{finishLabel}</span>
+            </dd>
           </div>
           <div>
             <dt className="text-stone-500">Quantity</dt>

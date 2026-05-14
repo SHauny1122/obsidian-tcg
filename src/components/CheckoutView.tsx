@@ -3,12 +3,10 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { formatZar } from "@/components/ProductCard";
+import { deliveryOptions, getDeliveryOption } from "@/config/delivery";
 import { shopConfig } from "@/config/shop";
 import type { Product } from "@/data/products";
 import { CartItem, getCartItems, getCartSubtotal } from "@/lib/cart";
-import { getLocalProducts } from "@/lib/local-products";
-
-const deliveryMethods = ["PUDO", "PostNet", "Courier", "Local pickup"];
 
 type BuyerDetails = {
   fullName: string;
@@ -22,48 +20,84 @@ const initialBuyerDetails: BuyerDetails = {
   fullName: "",
   email: "",
   phone: "",
-  deliveryMethod: deliveryMethods[0],
+  deliveryMethod: deliveryOptions[0].value,
   deliveryAddress: "",
 };
 
-export function CheckoutView({ mockProducts }: { mockProducts: Product[] }) {
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [localProducts, setLocalProducts] = useState<Product[]>([]);
+export function CheckoutView({
+  initialProducts,
+  initialCartItems = [],
+}: {
+  initialProducts: Product[];
+  initialCartItems?: CartItem[];
+}) {
+  const [cartItems, setCartItems] = useState<CartItem[]>(initialCartItems);
+  const [products, setProducts] = useState<Product[]>(initialProducts);
   const [buyerDetails, setBuyerDetails] =
     useState<BuyerDetails>(initialBuyerDetails);
   const [isInitializingPayment, setIsInitializingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState("");
+  const [hasAcceptedPolicies, setHasAcceptedPolicies] = useState(false);
 
   useEffect(() => {
-    const loadCart = () => setCartItems(getCartItems());
-    const loadProducts = () => setLocalProducts(getLocalProducts());
+    const loadCart = async () => {
+      const localCartItems = getCartItems();
 
-    loadCart();
+      if (localCartItems.length > 0) {
+        setCartItems(localCartItems);
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/cart");
+        const data = await response.json();
+
+        if (response.ok && Array.isArray(data.cartItems)) {
+          setCartItems(data.cartItems.length > 0 ? data.cartItems : initialCartItems);
+        }
+      } catch {
+        setCartItems(initialCartItems);
+      }
+    };
+    let isMounted = true;
+
+    async function loadProducts() {
+      const response = await fetch("/api/products");
+      const data = await response.json();
+
+      if (isMounted && response.ok && Array.isArray(data.products)) {
+        setProducts(data.products);
+      }
+    }
+
+    void loadCart();
     loadProducts();
     window.addEventListener("storage", loadCart);
     window.addEventListener("cart-updated", loadCart);
-    window.addEventListener("local-products-updated", loadProducts);
+    window.addEventListener("products-updated", loadProducts);
 
     return () => {
+      isMounted = false;
       window.removeEventListener("storage", loadCart);
       window.removeEventListener("cart-updated", loadCart);
-      window.removeEventListener("local-products-updated", loadProducts);
+      window.removeEventListener("products-updated", loadProducts);
     };
-  }, []);
+  }, [initialCartItems]);
 
   const subtotal = useMemo(() => getCartSubtotal(cartItems), [cartItems]);
-  const deliveryFee = 0;
+  const selectedDeliveryOption =
+    getDeliveryOption(buyerDetails.deliveryMethod) ?? deliveryOptions[0];
+  const deliveryFee = selectedDeliveryOption.feeZar;
   const total = subtotal + deliveryFee;
-  const needsDeliveryAddress = buyerDetails.deliveryMethod !== "Local pickup";
 
   const productBySlug = useMemo(() => {
     return new Map(
-      [...localProducts, ...mockProducts].map((product) => [
+      products.map((product) => [
         product.slug,
         product,
       ]),
     );
-  }, [localProducts, mockProducts]);
+  }, [products]);
 
   const cartWarnings = useMemo(() => {
     return cartItems.flatMap((item) => {
@@ -108,29 +142,26 @@ export function CheckoutView({ mockProducts }: { mockProducts: Product[] }) {
       nextErrors.phone = "Phone number is required.";
     }
 
-    if (!buyerDetails.deliveryMethod) {
-      nextErrors.deliveryMethod = "Delivery method is required.";
+    if (!getDeliveryOption(buyerDetails.deliveryMethod)) {
+      nextErrors.deliveryMethod = "Choose a valid delivery option.";
     }
 
-    if (needsDeliveryAddress && !buyerDetails.deliveryAddress.trim()) {
-      nextErrors.deliveryAddress =
-        "Delivery address is required for this delivery method.";
+    if (!buyerDetails.deliveryAddress.trim()) {
+      nextErrors.deliveryAddress = `${selectedDeliveryOption.detailsLabel} is required.`;
     }
 
     return nextErrors;
-  }, [buyerDetails, needsDeliveryAddress]);
+  }, [buyerDetails, selectedDeliveryOption.detailsLabel]);
 
   const isFormValid = Object.keys(errors).length === 0;
   const isCartValid = cartItems.length > 0 && cartWarnings.length === 0;
-  const canContinueToPayment = isFormValid && isCartValid;
+  const canContinueToPayment =
+    isFormValid && isCartValid && hasAcceptedPolicies;
 
   function updateBuyerDetails(field: keyof BuyerDetails, value: string) {
     setBuyerDetails((currentDetails) => ({
       ...currentDetails,
       [field]: value,
-      ...(field === "deliveryMethod" && value === "Local pickup"
-        ? { deliveryAddress: "" }
-        : {}),
     }));
   }
 
@@ -188,7 +219,7 @@ export function CheckoutView({ mockProducts }: { mockProducts: Product[] }) {
           Add cards to your cart before starting checkout.
         </p>
         <Link
-          href="/cards"
+          href="/cards?category=singles"
           className="vault-button mt-6 inline-flex min-h-12 items-center justify-center rounded-md px-5 py-3 text-sm font-semibold shadow-sm"
         >
           Browse cards
@@ -198,12 +229,12 @@ export function CheckoutView({ mockProducts }: { mockProducts: Product[] }) {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
-      <section className="vault-panel rounded-lg p-5 sm:p-6">
+    <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
+      <section className="vault-panel min-w-0 rounded-lg p-4 sm:p-6">
         <h2 className="text-2xl font-bold text-stone-950">Buyer details</h2>
         <p className="mt-2 text-sm leading-6 text-stone-600">
-          Payment will happen on the website through Paystack later. Orders are
-          not saved yet.
+          Payment is verified server-side through Paystack before the order is
+          saved.
         </p>
 
         {cartWarnings.length > 0 ? (
@@ -223,7 +254,7 @@ export function CheckoutView({ mockProducts }: { mockProducts: Product[] }) {
           </div>
         ) : null}
 
-        <form className="mt-6 grid gap-4">
+        <form className="mt-6 grid min-w-0 gap-4">
           <label className="grid gap-1.5 text-sm font-medium text-stone-800">
             Full name
             <input
@@ -300,9 +331,9 @@ export function CheckoutView({ mockProducts }: { mockProducts: Product[] }) {
                   : "border-stone-300"
               }`}
             >
-              {deliveryMethods.map((method) => (
-                <option key={method} value={method}>
-                  {method}
+              {deliveryOptions.map((method) => (
+                <option key={method.value} value={method.value}>
+                  {method.label} - {formatZar(method.feeZar)}
                 </option>
               ))}
             </select>
@@ -313,36 +344,30 @@ export function CheckoutView({ mockProducts }: { mockProducts: Product[] }) {
             ) : null}
           </label>
 
-          {needsDeliveryAddress ? (
-            <label className="grid gap-1.5 text-sm font-medium text-stone-800">
-              Delivery address
-              <textarea
-                required
-                rows={4}
-                value={buyerDetails.deliveryAddress}
-                onChange={(event) =>
-                  updateBuyerDetails("deliveryAddress", event.target.value)
-                }
-                placeholder="Street address, suburb, city, province, postal code"
-                className={`rounded-md border px-3 py-2 text-base outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100 ${
-                  fieldError("deliveryAddress")
-                    ? "border-red-400"
-                    : "border-stone-300"
-                }`}
-              />
-              {fieldError("deliveryAddress") ? (
-                <span className="text-sm text-red-700">
-                  {fieldError("deliveryAddress")}
-                </span>
-              ) : null}
-            </label>
-          ) : (
-            <div className="rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-600">
-              Local pickup details will be confirmed after payment is available.
-            </div>
-          )}
+          <label className="grid gap-1.5 text-sm font-medium text-stone-800">
+            {selectedDeliveryOption.detailsLabel}
+            <textarea
+              required
+              rows={4}
+              value={buyerDetails.deliveryAddress}
+              onChange={(event) =>
+                updateBuyerDetails("deliveryAddress", event.target.value)
+              }
+              placeholder={selectedDeliveryOption.detailsPlaceholder}
+              className={`rounded-md border px-3 py-2 text-base outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100 ${
+                fieldError("deliveryAddress")
+                  ? "border-red-400"
+                  : "border-stone-300"
+              }`}
+            />
+            {fieldError("deliveryAddress") ? (
+              <span className="text-sm text-red-700">
+                {fieldError("deliveryAddress")}
+              </span>
+            ) : null}
+          </label>
 
-          <section className="rounded-lg border border-stone-200 bg-stone-50 p-4">
+          <section className="min-w-0 rounded-lg border border-stone-200 bg-stone-50 p-4">
             <h3 className="text-lg font-bold text-stone-950">Review order</h3>
             <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
               <div>
@@ -363,26 +388,26 @@ export function CheckoutView({ mockProducts }: { mockProducts: Product[] }) {
               <div>
                 <dt className="text-stone-500">Delivery method</dt>
                 <dd className="font-semibold text-stone-950">
-                  {buyerDetails.deliveryMethod}
+                  {selectedDeliveryOption.label} - {formatZar(deliveryFee)}
                 </dd>
               </div>
               <div>
-                <dt className="text-stone-500">Delivery address</dt>
+                <dt className="text-stone-500">
+                  {selectedDeliveryOption.detailsLabel}
+                </dt>
                 <dd className="font-semibold text-stone-950">
-                  {needsDeliveryAddress
-                    ? buyerDetails.deliveryAddress || "Not entered yet"
-                    : "Local pickup"}
+                  {buyerDetails.deliveryAddress || "Not entered yet"}
                 </dd>
               </div>
             </dl>
 
             <div className="mt-4 space-y-2 border-t border-stone-200 pt-4 text-sm">
               {cartItems.map((item) => (
-                <div key={item.slug} className="flex justify-between gap-3">
-                  <span className="text-stone-700">
+                <div key={item.slug} className="flex min-w-0 justify-between gap-3">
+                  <span className="min-w-0 text-stone-700">
                     {item.name} x{item.quantity}
                   </span>
-                  <span className="font-semibold text-stone-950">
+                  <span className="shrink-0 font-semibold text-stone-950">
                     {formatZar(item.price * item.quantity)}
                   </span>
                 </div>
@@ -392,7 +417,9 @@ export function CheckoutView({ mockProducts }: { mockProducts: Product[] }) {
                 <span className="font-semibold">{formatZar(subtotal)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-stone-600">Delivery placeholder</span>
+                <span className="text-stone-600">
+                  {selectedDeliveryOption.label}
+                </span>
                 <span className="font-semibold">{formatZar(deliveryFee)}</span>
               </div>
               <div className="flex justify-between border-t border-stone-200 pt-2 text-base font-bold">
@@ -401,6 +428,32 @@ export function CheckoutView({ mockProducts }: { mockProducts: Product[] }) {
               </div>
             </div>
           </section>
+
+          <label className="flex gap-3 rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-sm leading-6 text-stone-600">
+            <input
+              type="checkbox"
+              checked={hasAcceptedPolicies}
+              onChange={(event) => setHasAcceptedPolicies(event.target.checked)}
+              className="mt-1 h-4 w-4 shrink-0"
+            />
+            <span>
+              I agree to the{" "}
+              <Link
+                href="/terms-of-service"
+                className="font-semibold text-emerald-700 underline underline-offset-2"
+              >
+                Terms of Service
+              </Link>{" "}
+              and{" "}
+              <Link
+                href="/privacy-policy"
+                className="font-semibold text-emerald-700 underline underline-offset-2"
+              >
+                Privacy Policy
+              </Link>
+              .
+            </span>
+          </label>
 
           <button
             type="button"
@@ -421,14 +474,14 @@ export function CheckoutView({ mockProducts }: { mockProducts: Product[] }) {
           ) : null}
           {!canContinueToPayment ? (
             <p className="text-sm text-stone-600">
-              Complete the required fields and fix any cart warnings before
-              payment is enabled.
+              Complete the required fields, accept the policies, and fix any
+              cart warnings before payment is enabled.
             </p>
           ) : null}
         </form>
       </section>
 
-      <aside className="vault-panel rounded-lg p-5">
+      <aside className="vault-panel min-w-0 rounded-lg p-4 sm:p-5">
         <h2 className="text-xl font-bold text-stone-950">Order summary</h2>
         <div className="mt-4 space-y-4">
           {cartItems.map((item) => (
@@ -462,7 +515,9 @@ export function CheckoutView({ mockProducts }: { mockProducts: Product[] }) {
             </dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-stone-600">Delivery fee placeholder</dt>
+            <dt className="text-stone-600">
+              {selectedDeliveryOption.label}
+            </dt>
             <dd className="font-semibold text-stone-950">
               {formatZar(deliveryFee)}
             </dd>
@@ -474,9 +529,8 @@ export function CheckoutView({ mockProducts }: { mockProducts: Product[] }) {
         </dl>
 
         <p className="mt-4 text-xs leading-5 text-stone-500">
-          TODO: After successful Paystack payment, send the seller an order
-          summary notification via WhatsApp or email based on{" "}
-          {shopConfig.sellerNotificationPreference}.
+          Seller notification is prepared for{" "}
+          {shopConfig.sellerNotificationPreference} and can be connected next.
         </p>
       </aside>
     </div>

@@ -29,6 +29,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+next-dev*.log
+
+# local scratch imports
+tmp-trainer-import/
 
 # env files
 .env

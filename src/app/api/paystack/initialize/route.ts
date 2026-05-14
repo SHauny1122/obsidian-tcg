@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getDeliveryOption } from "@/config/delivery";
 import { shopConfig } from "@/config/shop";
 import type { CartItem } from "@/lib/cart";
+import { listProducts } from "@/lib/products-repository";
 
 type BuyerDetails = {
   fullName?: string;
@@ -16,6 +18,14 @@ type InitializePayload = {
   subtotal?: number;
   deliveryFee?: number;
   total?: number;
+};
+
+type VerifiedCartItem = {
+  slug: string;
+  name: string;
+  price: number;
+  quantity: number;
+  lineTotal: number;
 };
 
 function isValidCartItem(item: Partial<CartItem>): item is CartItem {
@@ -61,6 +71,29 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  if (!buyerDetails.fullName || !buyerDetails.phone) {
+    return NextResponse.json(
+      { error: "Buyer name and phone number are required." },
+      { status: 400 },
+    );
+  }
+
+  const deliveryOption = getDeliveryOption(buyerDetails.deliveryMethod);
+
+  if (!deliveryOption) {
+    return NextResponse.json(
+      { error: "Choose a valid delivery option." },
+      { status: 400 },
+    );
+  }
+
+  if (!buyerDetails.deliveryAddress?.trim()) {
+    return NextResponse.json(
+      { error: `${deliveryOption.detailsLabel} is required.` },
+      { status: 400 },
+    );
+  }
+
   if (!cartItems.every(isValidCartItem)) {
     return NextResponse.json(
       { error: "Cart contains invalid items." },
@@ -68,13 +101,58 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const recalculatedSubtotal = cartItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
+  let products;
+
+  try {
+    products = await listProducts();
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Could not validate inventory.",
+      },
+      { status: 500 },
+    );
+  }
+
+  const productBySlug = new Map(
+    products.map((product) => [product.slug, product]),
+  );
+  const verifiedCartItems: VerifiedCartItem[] = [];
+
+  for (const item of cartItems) {
+    const product = productBySlug.get(item.slug);
+
+    if (!product) {
+      return NextResponse.json(
+        { error: `${item.name} is no longer available.` },
+        { status: 400 },
+      );
+    }
+
+    if (product.status === "sold" || product.quantity < item.quantity) {
+      return NextResponse.json(
+        { error: `${product.name} does not have enough stock.` },
+        { status: 400 },
+      );
+    }
+
+    verifiedCartItems.push({
+      slug: product.slug,
+      name: product.name,
+      price: product.askingPriceZar,
+      quantity: item.quantity,
+      lineTotal: product.askingPriceZar * item.quantity,
+    });
+  }
+
+  const recalculatedSubtotal = verifiedCartItems.reduce(
+    (sum, item) => sum + item.lineTotal,
     0,
   );
-  const deliveryFee = Number.isFinite(payload.deliveryFee)
-    ? Number(payload.deliveryFee)
-    : 0;
+  const deliveryFee = deliveryOption.feeZar;
   const recalculatedTotal = recalculatedSubtotal + deliveryFee;
 
   if (recalculatedTotal <= 0) {
@@ -84,7 +162,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const reference = `obsidian-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
+  const reference = `collectiq-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? new URL(request.url).origin;
   const callbackUrl = `${siteUrl}/payment/callback?reference=${reference}`;
 
@@ -105,19 +183,14 @@ export async function POST(request: NextRequest) {
         metadata: {
           buyer: buyerDetails,
           delivery: {
-            method: buyerDetails.deliveryMethod,
+            method: deliveryOption.label,
             address: buyerDetails.deliveryAddress,
           },
-          cart: cartItems.map((item) => ({
-            slug: item.slug,
-            name: item.name,
-            price: item.price,
-            quantity: item.quantity,
-            lineTotal: item.price * item.quantity,
-          })),
+          cart: verifiedCartItems,
           totals: {
             submittedSubtotal: payload.subtotal,
             submittedTotal: payload.total,
+            submittedDeliveryFee: payload.deliveryFee,
             subtotal: recalculatedSubtotal,
             deliveryFee,
             total: recalculatedTotal,

@@ -11,13 +11,38 @@ import {
   saveCartItems,
 } from "@/lib/cart";
 
-export function CartView() {
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+export function CartView({
+  initialCartItems = [],
+}: {
+  initialCartItems?: CartItem[];
+}) {
+  const [cartItems, setCartItems] = useState<CartItem[]>(initialCartItems);
 
   useEffect(() => {
-    const loadCart = () => setCartItems(getCartItems());
+    const loadCart = async () => {
+      const localCartItems = getCartItems();
 
-    loadCart();
+      if (localCartItems.length > 0) {
+        setCartItems(localCartItems);
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/cart");
+        const data = await response.json();
+
+        if (response.ok && Array.isArray(data.cartItems)) {
+          setCartItems(data.cartItems);
+          if (data.cartItems.length > 0) {
+            saveCartItems(data.cartItems);
+          }
+        }
+      } catch {
+        setCartItems(initialCartItems);
+      }
+    };
+
+    void loadCart();
     window.addEventListener("storage", loadCart);
     window.addEventListener("cart-updated", loadCart);
 
@@ -25,7 +50,7 @@ export function CartView() {
       window.removeEventListener("storage", loadCart);
       window.removeEventListener("cart-updated", loadCart);
     };
-  }, []);
+  }, [initialCartItems]);
 
   const subtotal = useMemo(() => getCartSubtotal(cartItems), [cartItems]);
 
@@ -65,7 +90,7 @@ export function CartView() {
           Browse the available cards and add anything you want to enquire about.
         </p>
         <Link
-          href="/cards"
+          href="/cards?category=singles"
           className="vault-button mt-6 inline-flex min-h-12 items-center justify-center rounded-md px-5 py-3 text-sm font-semibold shadow-sm"
         >
           Browse cards
@@ -161,8 +186,8 @@ export function CartView() {
           </span>
         </div>
         <p className="mt-3 text-sm leading-6 text-stone-600">
-          Checkout continues on the website. Paystack payment will be connected
-          later, and totals are shown in {shopConfig.currency}.
+          Checkout continues on the website with Paystack, and totals are shown
+          in {shopConfig.currency}.
         </p>
 
         <div className="mt-5 grid gap-3">
@@ -173,7 +198,7 @@ export function CartView() {
             Checkout
           </Link>
           <Link
-            href="/cards"
+            href="/cards?category=singles"
             className="vault-button-secondary inline-flex min-h-12 items-center justify-center rounded-md px-5 py-3 text-sm font-semibold"
           >
             Continue shopping

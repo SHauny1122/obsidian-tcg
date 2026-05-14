@@ -1,8 +1,21 @@
+import { cookies } from "next/headers";
 import { CheckoutView } from "@/components/CheckoutView";
 import { SiteHeader } from "@/components/SiteHeader";
-import { products } from "@/data/products";
+import { listProducts } from "@/lib/products-repository";
+import {
+  parseServerCartCookie,
+  serverCartCookieName,
+} from "@/lib/server-cart";
 
-export default function CheckoutPage() {
+export const dynamic = "force-dynamic";
+
+export default async function CheckoutPage() {
+  const cookieStore = await cookies();
+  const initialCartItems = parseServerCartCookie(
+    cookieStore.get(serverCartCookieName)?.value,
+  );
+  const products = await listProducts();
+
   return (
     <div className="min-h-screen">
       <SiteHeader />
@@ -15,11 +28,13 @@ export default function CheckoutPage() {
             Checkout
           </h1>
           <p className="mt-3 text-sm leading-6 text-stone-600">
-            Complete buyer details here. Paystack payment will be connected
-            later.
+            Complete buyer details here before continuing to Paystack.
           </p>
         </div>
-        <CheckoutView mockProducts={products} />
+        <CheckoutView
+          initialProducts={products}
+          initialCartItems={initialCartItems}
+        />
       </main>
     </div>
   );

@@ -1,27 +1,30 @@
 import { ProductDetail } from "@/components/ProductDetail";
 import { SiteHeader } from "@/components/SiteHeader";
-import { getProductBySlug, products } from "@/data/products";
+import { shopConfig } from "@/config/shop";
+import {
+  getProductBySlugFromDatabase,
+  listProducts,
+} from "@/lib/products-repository";
 
-export function generateStaticParams() {
-  return products.map((product) => ({ slug: product.slug }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata(props: PageProps<"/cards/[slug]">) {
   const { slug } = await props.params;
-  const product = getProductBySlug(slug);
+  const product = await getProductBySlugFromDatabase(slug);
 
   return {
-    title: product ? `${product.name} | Obsidian TCG` : "Card not found",
+    title: product ? `${product.name} | ${shopConfig.name}` : "Card not found",
   };
 }
 
 export default async function CardDetailPage(props: PageProps<"/cards/[slug]">) {
   const { slug } = await props.params;
+  const products = await listProducts();
 
   return (
     <div className="min-h-screen">
       <SiteHeader />
-      <ProductDetail slug={slug} mockProducts={products} />
+      <ProductDetail slug={slug} initialProducts={products} />
     </div>
   );
 }

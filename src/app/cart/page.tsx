@@ -1,7 +1,17 @@
+import { cookies } from "next/headers";
 import { CartView } from "@/components/CartView";
 import { SiteHeader } from "@/components/SiteHeader";
+import {
+  parseServerCartCookie,
+  serverCartCookieName,
+} from "@/lib/server-cart";
 
-export default function CartPage() {
+export default async function CartPage() {
+  const cookieStore = await cookies();
+  const initialCartItems = parseServerCartCookie(
+    cookieStore.get(serverCartCookieName)?.value,
+  );
+
   return (
     <div className="min-h-screen">
       <SiteHeader />
@@ -17,7 +27,7 @@ export default function CartPage() {
             Review your cards before sending a WhatsApp enquiry.
           </p>
         </div>
-        <CartView />
+        <CartView initialCartItems={initialCartItems} />
       </main>
     </div>
   );

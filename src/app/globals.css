@@ -1,17 +1,17 @@
 @import "tailwindcss";
 
 :root {
-  --background: #080806;
-  --foreground: #f6eed8;
-  --vault-panel: rgba(22, 21, 18, 0.86);
-  --vault-panel-strong: rgba(31, 29, 24, 0.94);
-  --vault-border: rgba(234, 179, 8, 0.18);
-  --vault-border-strong: rgba(234, 179, 8, 0.34);
-  --vault-gold: #eab308;
-  --vault-gold-soft: #facc15;
-  --vault-cream: #f6eed8;
-  --vault-muted: #a8a29e;
-  --vault-ink: #080806;
+  --background: #020606;
+  --foreground: #f4fbfb;
+  --vault-panel: rgba(9, 14, 15, 0.9);
+  --vault-panel-strong: rgba(12, 20, 22, 0.96);
+  --vault-border: rgba(52, 211, 194, 0.2);
+  --vault-border-strong: rgba(52, 211, 194, 0.5);
+  --vault-gold: #26d9c7;
+  --vault-gold-soft: #67fff0;
+  --vault-cream: #f4fbfb;
+  --vault-muted: #94a3a5;
+  --vault-ink: #031010;
 }
 
 @theme inline {
@@ -25,14 +25,14 @@ body {
   background: var(--background);
   color: var(--foreground);
   background-image:
-    radial-gradient(circle at 18% 0%, rgba(234, 179, 8, 0.06), transparent 26rem),
-    radial-gradient(circle at 86% 12%, rgba(99, 102, 241, 0.035), transparent 24rem),
-    linear-gradient(180deg, #050505 0%, #090907 46%, #050505 100%);
+    radial-gradient(circle at 18% 0%, rgba(38, 217, 199, 0.08), transparent 26rem),
+    radial-gradient(circle at 86% 12%, rgba(103, 255, 240, 0.045), transparent 24rem),
+    linear-gradient(180deg, #010303 0%, #061011 46%, #010303 100%);
   background-attachment: fixed;
 }
 
 ::selection {
-  background: rgba(234, 179, 8, 0.35);
+  background: rgba(38, 217, 199, 0.35);
   color: var(--vault-cream);
 }
 
@@ -82,7 +82,7 @@ body {
 .bg-emerald-100,
 .bg-amber-50,
 .bg-amber-100 {
-  background-color: rgba(234, 179, 8, 0.12);
+  background-color: rgba(38, 217, 199, 0.12);
 }
 
 .text-emerald-700,
@@ -105,24 +105,24 @@ textarea::placeholder {
 }
 
 option {
-  background-color: #11100d;
+  background-color: #071113;
   color: var(--vault-cream);
 }
 
 .vault-panel {
-  background: linear-gradient(180deg, rgba(29, 27, 23, 0.95), rgba(15, 14, 12, 0.95));
+  background: linear-gradient(180deg, rgba(13, 20, 22, 0.96), rgba(5, 9, 10, 0.96));
   border: 1px solid var(--vault-border);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.34);
 }
 
 .vault-button {
   background: linear-gradient(180deg, var(--vault-gold-soft), var(--vault-gold));
   color: var(--vault-ink);
-  border: 1px solid rgba(250, 204, 21, 0.52);
+  border: 1px solid rgba(103, 255, 240, 0.52);
 }
 
 .vault-button:hover {
-  background: #fde047;
+  background: #8ffff5;
 }
 
 .vault-button-secondary {
@@ -133,7 +133,7 @@ option {
 
 .vault-button-secondary:hover {
   border-color: var(--vault-border-strong);
-  background: rgba(234, 179, 8, 0.08);
+  background: rgba(38, 217, 199, 0.1);
 }
 
 .vault-badge {
@@ -143,7 +143,7 @@ option {
 }
 
 .vault-badge-gold {
-  border: 1px solid rgba(250, 204, 21, 0.5);
-  background: rgba(234, 179, 8, 0.16);
+  border: 1px solid rgba(103, 255, 240, 0.52);
+  background: rgba(38, 217, 199, 0.16);
   color: var(--vault-gold-soft);
 }

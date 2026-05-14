@@ -5,51 +5,66 @@ import { useEffect, useMemo, useState } from "react";
 import { AddToCartButton } from "@/components/AddToCartButton";
 import { formatZar } from "@/components/ProductCard";
 import { shopConfig } from "@/config/shop";
-import type { Product } from "@/data/products";
-import { getLocalProducts, getProductImage } from "@/lib/local-products";
+import { productFinishes, type Product } from "@/data/products";
+import { getProductImage } from "@/lib/local-products";
 
 export function ProductDetail({
   slug,
-  mockProducts,
+  initialProducts,
 }: {
   slug: string;
-  mockProducts: Product[];
+  initialProducts: Product[];
 }) {
-  const [localProducts, setLocalProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   useEffect(() => {
-    const loadProducts = () => setLocalProducts(getLocalProducts());
+    let isMounted = true;
+
+    async function loadProducts() {
+      const response = await fetch("/api/products");
+      const data = await response.json();
+
+      if (isMounted && response.ok && Array.isArray(data.products)) {
+        setProducts(data.products);
+      }
+
+      if (isMounted) {
+        setHasLoaded(true);
+      }
+    }
 
     loadProducts();
-    window.addEventListener("storage", loadProducts);
-    window.addEventListener("local-products-updated", loadProducts);
+    window.addEventListener("products-updated", loadProducts);
 
     return () => {
-      window.removeEventListener("storage", loadProducts);
-      window.removeEventListener("local-products-updated", loadProducts);
+      isMounted = false;
+      window.removeEventListener("products-updated", loadProducts);
     };
   }, []);
 
   const product = useMemo(
-    () => [...localProducts, ...mockProducts].find((item) => item.slug === slug),
-    [localProducts, mockProducts, slug],
+    () => products.find((item) => item.slug === slug),
+    [products, slug],
   );
 
   if (!product) {
     return (
       <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
         <Link
-          href="/cards"
+          href="/cards?category=singles"
           className="text-sm font-semibold text-emerald-700 hover:text-emerald-900"
         >
           Back to cards
         </Link>
         <section className="mt-6 rounded-lg border border-stone-200 bg-white p-8">
           <h1 className="text-2xl font-bold text-stone-950">
-            Product not found
+            {hasLoaded ? "Product not found" : "Loading product..."}
           </h1>
           <p className="mt-3 text-sm leading-6 text-stone-600">
-            This product may have been deleted from local browser storage.
+            {hasLoaded
+              ? "This product may have been deleted or sold out."
+              : "Checking the shared inventory database."}
           </p>
         </section>
       </main>
@@ -66,11 +81,14 @@ export function ProductDetail({
     ? `https://wa.me/${shopConfig.whatsappSupportNumber}?text=${message}`
     : `https://wa.me/?text=${message}`;
   const isSold = product.status === "sold";
+  const finishLabel =
+    productFinishes.find((finish) => finish.value === product.finish)?.label ??
+    "Normal";
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
       <Link
-        href="/cards"
+        href="/cards?category=singles"
         className="text-sm font-semibold text-emerald-700 hover:text-emerald-900"
       >
         Back to cards
@@ -140,6 +158,12 @@ export function ProductDetail({
               <dt className="text-sm text-stone-500">Condition</dt>
               <dd className="mt-1 font-semibold text-stone-950">
                 {product.condition}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-sm text-stone-500">Finish</dt>
+              <dd className="mt-1 font-semibold text-stone-950">
+                {finishLabel}
               </dd>
             </div>
             <div>
