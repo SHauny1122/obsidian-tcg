@@ -37,6 +37,14 @@ export default async function Home() {
                 <br />
                 for Africa
               </h1>
+              <p className="mt-6 max-w-2xl text-balance font-serif text-base leading-7 text-stone-600 sm:text-lg sm:leading-8">
+                Hi, I&apos;m Shaun. I built this store to share the Pokémon
+                hobby with other collectors in South Africa.
+                <span className="mt-3 block">
+                  Feel free to message me on WhatsApp anytime if you have
+                  questions, want more photos, or need help with anything.
+                </span>
+              </p>
               <div className="mt-7 flex w-full max-w-sm flex-col justify-center gap-3 sm:max-w-none sm:flex-row">
                 <Link
                   href="/cards"
