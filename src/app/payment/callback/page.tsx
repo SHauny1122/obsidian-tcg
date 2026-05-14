@@ -8,6 +8,8 @@ export default async function PaymentCallbackPage(
   const reference =
     typeof searchParams.reference === "string"
       ? searchParams.reference
+      : typeof searchParams.trxref === "string"
+        ? searchParams.trxref
       : undefined;
 
   return (

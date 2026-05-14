@@ -198,6 +198,13 @@ export function CheckoutView({
         throw new Error(data.error ?? "Could not start Paystack checkout.");
       }
 
+      if (typeof data.reference === "string") {
+        window.sessionStorage.setItem(
+          "pokemon-market-pending-payment-reference",
+          data.reference,
+        );
+      }
+
       window.location.href = data.authorizationUrl;
     } catch (error) {
       setPaymentError(

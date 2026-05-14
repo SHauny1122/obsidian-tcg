@@ -10,6 +10,7 @@ type VerificationState =
   | { status: "failed"; message: string };
 
 export function PaymentCallbackView({ reference }: { reference?: string }) {
+  const [paymentReference, setPaymentReference] = useState(reference);
   const [verification, setVerification] = useState<VerificationState>(() =>
     reference
       ? {
@@ -23,17 +24,35 @@ export function PaymentCallbackView({ reference }: { reference?: string }) {
   );
 
   useEffect(() => {
-    if (!reference) {
+    if (paymentReference) {
+      return;
+    }
+
+    const pendingReference = window.sessionStorage.getItem(
+      "pokemon-market-pending-payment-reference",
+    );
+
+    if (pendingReference) {
+      setPaymentReference(pendingReference);
+      setVerification({
+        status: "loading",
+        message: "Verifying your payment...",
+      });
+    }
+  }, [paymentReference]);
+
+  useEffect(() => {
+    if (!paymentReference) {
       return;
     }
 
     let isMounted = true;
-    const paymentReference = reference;
+    const referenceToVerify = paymentReference;
 
     async function verifyPayment() {
       try {
         const response = await fetch(
-          `/api/paystack/verify?reference=${encodeURIComponent(paymentReference)}`,
+          `/api/paystack/verify?reference=${encodeURIComponent(referenceToVerify)}`,
         );
         const data = await response.json();
 
@@ -46,6 +65,9 @@ export function PaymentCallbackView({ reference }: { reference?: string }) {
         }
 
         if (data.success) {
+          window.sessionStorage.removeItem(
+            "pokemon-market-pending-payment-reference",
+          );
           saveCartItems([]);
           setVerification({
             status: "success",
@@ -78,7 +100,7 @@ export function PaymentCallbackView({ reference }: { reference?: string }) {
     return () => {
       isMounted = false;
     };
-  }, [reference]);
+  }, [paymentReference]);
 
   const isSuccess = verification.status === "success";
 
@@ -93,9 +115,9 @@ export function PaymentCallbackView({ reference }: { reference?: string }) {
       <p className="mt-4 text-sm leading-6 text-stone-600">
         {verification.message}
       </p>
-      {reference ? (
+      {paymentReference ? (
         <p className="mt-3 break-all text-xs text-stone-500">
-          Reference: {reference}
+          Reference: {paymentReference}
         </p>
       ) : null}
       <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
