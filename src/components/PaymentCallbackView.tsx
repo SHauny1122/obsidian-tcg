@@ -64,6 +64,18 @@ export function PaymentCallbackView({ reference }: { reference?: string }) {
           throw new Error(data.error ?? "Payment verification failed.");
         }
 
+        if (data.success && data.testMode) {
+          window.sessionStorage.removeItem(
+            "pokemon-market-pending-payment-reference",
+          );
+          setVerification({
+            status: "success",
+            message:
+              "Test payment verified. No order was saved, stock was not changed, and your cart was kept for testing.",
+          });
+          return;
+        }
+
         if (data.success) {
           window.sessionStorage.removeItem(
             "pokemon-market-pending-payment-reference",

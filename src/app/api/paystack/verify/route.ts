@@ -80,7 +80,21 @@ export async function GET(request: NextRequest) {
   }
 
   const isSuccess = data.data?.status === "success";
+  const isTestMode =
+    data.data?.domain === "test" || secretKey.startsWith("sk_test_");
   let orderResult = null;
+
+  if (isSuccess && isTestMode) {
+    return NextResponse.json({
+      success: true,
+      testMode: true,
+      status: data.data?.status,
+      reference: data.data?.reference ?? reference,
+      amount: data.data?.amount,
+      currency: data.data?.currency,
+      order: null,
+    });
+  }
 
   if (isSuccess) {
     const metadata = asRecord(data.data?.metadata);
@@ -150,6 +164,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     success: isSuccess,
+    testMode: isTestMode,
     status: data.data?.status,
     reference: data.data?.reference ?? reference,
     amount: data.data?.amount,
