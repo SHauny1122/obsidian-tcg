@@ -3,9 +3,11 @@ import type { Product } from "@/data/products";
 export function AddToCartButton({
   product,
   className = "",
+  buttonClassName = "",
 }: {
   product: Product;
   className?: string;
+  buttonClassName?: string;
 }) {
   const isSold = product.status === "sold";
 
@@ -15,7 +17,7 @@ export function AddToCartButton({
         <button
           type="button"
           disabled
-          className="min-h-11 w-full cursor-not-allowed rounded-md border border-stone-200 bg-stone-200 px-4 py-2 text-sm font-semibold text-stone-500"
+          className={`min-h-11 w-full cursor-not-allowed rounded-md border border-stone-200 bg-stone-200 px-4 py-2 text-sm font-semibold text-stone-500 ${buttonClassName}`}
         >
           Sold
         </button>
@@ -30,7 +32,7 @@ export function AddToCartButton({
       <input type="hidden" name="redirectTo" value="/cart" />
       <button
         type="submit"
-        className="vault-button min-h-11 w-full rounded-md px-4 py-2 text-sm font-semibold shadow-sm"
+        className={`vault-button min-h-11 w-full rounded-md px-4 py-2 text-sm font-semibold shadow-sm ${buttonClassName}`}
       >
         Add to cart
       </button>
