@@ -20,6 +20,21 @@ export function CartView({
 
   useEffect(() => {
     const loadCart = async () => {
+      try {
+        const response = await fetch("/api/cart");
+        const data = await response.json();
+
+        if (response.ok && Array.isArray(data.cartItems)) {
+          if (data.cartItems.length > 0) {
+            setCartItems(data.cartItems);
+            saveCartItems(data.cartItems);
+            return;
+          }
+        }
+      } catch {
+        // Fall back to browser storage below.
+      }
+
       const localCartItems = getCartItems();
 
       if (localCartItems.length > 0) {
@@ -27,19 +42,7 @@ export function CartView({
         return;
       }
 
-      try {
-        const response = await fetch("/api/cart");
-        const data = await response.json();
-
-        if (response.ok && Array.isArray(data.cartItems)) {
-          setCartItems(data.cartItems);
-          if (data.cartItems.length > 0) {
-            saveCartItems(data.cartItems);
-          }
-        }
-      } catch {
-        setCartItems(initialCartItems);
-      }
+      setCartItems(initialCartItems);
     };
 
     void loadCart();

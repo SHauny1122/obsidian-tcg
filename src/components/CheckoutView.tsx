@@ -41,23 +41,23 @@ export function CheckoutView({
 
   useEffect(() => {
     const loadCart = async () => {
-      const localCartItems = getCartItems();
-
-      if (localCartItems.length > 0) {
-        setCartItems(localCartItems);
-        return;
-      }
-
       try {
         const response = await fetch("/api/cart");
         const data = await response.json();
 
         if (response.ok && Array.isArray(data.cartItems)) {
-          setCartItems(data.cartItems.length > 0 ? data.cartItems : initialCartItems);
+          if (data.cartItems.length > 0) {
+            setCartItems(data.cartItems);
+            return;
+          }
         }
       } catch {
-        setCartItems(initialCartItems);
+        // Fall back to browser storage below.
       }
+
+      const localCartItems = getCartItems();
+
+      setCartItems(localCartItems.length > 0 ? localCartItems : initialCartItems);
     };
     let isMounted = true;
 

@@ -8,23 +8,27 @@ export function useCartCount() {
 
   useEffect(() => {
     const loadCartCount = async () => {
+      try {
+        const response = await fetch("/api/cart");
+        const data = await response.json();
+
+        if (
+          response.ok &&
+          Array.isArray(data.cartItems) &&
+          data.cartItems.length > 0
+        ) {
+          setCartCount(getCartCount(data.cartItems));
+          return;
+        }
+      } catch {
+        // Fall back to browser storage below.
+      }
+
       const localCartItems = getCartItems();
 
       if (localCartItems.length > 0) {
         setCartCount(getCartCount(localCartItems));
         return;
-      }
-
-      try {
-        const response = await fetch("/api/cart");
-        const data = await response.json();
-
-        if (response.ok && Array.isArray(data.cartItems)) {
-          setCartCount(getCartCount(data.cartItems));
-          return;
-        }
-      } catch {
-        // Keep the current count if the server cart cannot be reached.
       }
 
       setCartCount(0);
