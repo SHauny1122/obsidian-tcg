@@ -21,9 +21,11 @@ type SetSummary = {
 };
 
 const knownSetImages: Record<string, string> = {
+  "Guardians Rising": "/images/sets/guardians-rising.png",
   "Mega Evolution": "/images/sets/mega-evolution.webp",
   "Phantasmal Flames": "/images/sets/phantasmal-flames.webp",
   "Prismatic Evolutions": "/images/sets/prismatic-evolutions.webp",
+  "Unbroken Bonds": "/images/sets/unbroken-bonds.png",
 };
 
 function fallbackSetImage(setName: string) {
