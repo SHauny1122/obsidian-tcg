@@ -21,6 +21,7 @@ type SetSummary = {
 };
 
 const knownSetImages: Record<string, string> = {
+  "Darkness Ablaze": "/images/sets/darkness-ablaze.png",
   "Guardians Rising": "/images/sets/guardians-rising.png",
   "Mega Evolution": "/images/sets/mega-evolution.webp",
   "Phantasmal Flames": "/images/sets/phantasmal-flames.webp",
